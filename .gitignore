@@ -230,4 +230,20 @@ __marimo__/
 # Streamlit
 .streamlit/secrets.toml
 
+# Ignore heavy Fed bulk text files
+data/raw/fed_fry9c/bulk_data/
 
+
+# Environments
+openbb-env/
+venv/
+.venv/
+__pycache__/
+*.pyc
+
+# Data (if they are large/proprietary)
+# Keep this if you want to track your CSVs
+
+# System files
+.DS_Store
+Thumbs.db

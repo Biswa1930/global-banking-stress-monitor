@@ -1,0 +1,163 @@
+<html>
+    <head>
+        <meta charset="utf-8">
+        
+            <script src="lib/bindings/utils.js"></script>
+            <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/vis-network/9.1.2/dist/dist/vis-network.min.css" integrity="sha512-WgxfT5LWjfszlPHXRmBWHkV2eceiWTOBvrKCNbdgDYTHrT2AeLCGbF4sZlZw3UMN3WtL0tGUoIAKsu8mllg/XA==" crossorigin="anonymous" referrerpolicy="no-referrer" />
+            <script src="https://cdnjs.cloudflare.com/ajax/libs/vis-network/9.1.2/dist/vis-network.min.js" integrity="sha512-LnvoEWDFrqGHlHmDD2101OrLcbsfkrzoSpvtSQtxK3RMnRV0eOkhhBN2dXHKRrUU8p2DGRTk35n4O8nWSVe1mQ==" crossorigin="anonymous" referrerpolicy="no-referrer"></script>
+            
+        
+<center>
+<h1></h1>
+</center>
+
+<!-- <link rel="stylesheet" href="../node_modules/vis/dist/vis.min.css" type="text/css" />
+<script type="text/javascript" src="../node_modules/vis/dist/vis.js"> </script>-->
+        <link
+          href="https://cdn.jsdelivr.net/npm/bootstrap@5.0.0-beta3/dist/css/bootstrap.min.css"
+          rel="stylesheet"
+          integrity="sha384-eOJMYsd53ii+scO/bJGFsiCZc+5NDVN2yr8+0RDqr0Ql0h+rP48ckxlpbzKgwra6"
+          crossorigin="anonymous"
+        />
+        <script
+          src="https://cdn.jsdelivr.net/npm/bootstrap@5.0.0-beta3/dist/js/bootstrap.bundle.min.js"
+          integrity="sha384-JEW9xMcG8R+pH31jmWH6WWP0WintQrMb4s7ZOdauHnUtxwoG2vI5DkLtS3qm9Ekf"
+          crossorigin="anonymous"
+        ></script>
+
+
+        <center>
+          <h1></h1>
+        </center>
+        <style type="text/css">
+
+             #mynetwork {
+                 width: 100%;
+                 height: 800px;
+                 background-color: #0f172a;
+                 border: 1px solid lightgray;
+                 position: relative;
+                 float: left;
+             }
+
+             
+
+             
+
+             
+        </style>
+    </head>
+
+
+    <body>
+        <div class="card" style="width: 100%">
+            
+            
+            <div id="mynetwork" class="card-body"></div>
+        </div>
+
+        
+        
+
+        <script type="text/javascript">
+
+              // initialize global variables.
+              var edges;
+              var nodes;
+              var allNodes;
+              var allEdges;
+              var nodeColors;
+              var originalNodes;
+              var network;
+              var container;
+              var options, data;
+              var filter = {
+                  item : '',
+                  property : '',
+                  value : []
+              };
+
+              
+
+              
+
+              // This method is responsible for drawing the graph, returns the drawn network
+              function drawGraph() {
+                  var container = document.getElementById('mynetwork');
+
+                  
+
+                  // parsing and collecting nodes and edges from the python
+                  nodes = new vis.DataSet([{"color": "#3b82f6", "font": {"color": "white"}, "id": "JPM", "label": "JPM", "shape": "dot", "size": 38, "title": "Bank: JPM\nTotal Assets: $3875.39 Billion"}, {"color": "#ef4444", "font": {"color": "white"}, "id": "TOTAL_FINANCIALS", "label": "Financial System", "shape": "dot", "size": 50, "title": "The Global Financial System"}, {"color": "#3b82f6", "font": {"color": "white"}, "id": "BAC", "label": "BAC", "shape": "dot", "size": 31, "title": "Bank: BAC\nTotal Assets: $3180.0 Billion"}, {"color": "#3b82f6", "font": {"color": "white"}, "id": "C", "label": "C", "shape": "dot", "size": 23, "title": "Bank: C\nTotal Assets: $2393.0 Billion"}, {"color": "#3b82f6", "font": {"color": "white"}, "id": "WFC", "label": "WFC", "shape": "dot", "size": 18, "title": "Bank: WFC\nTotal Assets: $1885.0 Billion"}, {"color": "#3b82f6", "font": {"color": "white"}, "id": "GS", "label": "GS", "shape": "dot", "size": 16, "title": "Bank: GS\nTotal Assets: $1641.59 Billion"}, {"color": "#3b82f6", "font": {"color": "white"}, "id": "MS", "label": "MS", "shape": "dot", "size": 11, "title": "Bank: MS\nTotal Assets: $1193.69 Billion"}, {"color": "#10b981", "font": {"color": "white"}, "id": "STT", "label": "STT", "shape": "dot", "size": 10, "title": "Bank: STT\nTotal Assets: $314.5 Billion"}, {"color": "#10b981", "font": {"color": "white"}, "id": "BK", "label": "BK", "shape": "dot", "size": 10, "title": "Bank: BK\nTotal Assets: $409.95 Billion"}, {"color": "#10b981", "font": {"color": "white"}, "id": "HSBC", "label": "HSBC", "shape": "dot", "size": 30, "title": "Bank: HSBC\nTotal Assets: $3038.0 Billion"}, {"color": "#10b981", "font": {"color": "white"}, "id": "BCS", "label": "BCS", "shape": "dot", "size": 18, "title": "Bank: BCS\nTotal Assets: $1894.0 Billion"}, {"color": "#10b981", "font": {"color": "white"}, "id": "DB", "label": "DB", "shape": "dot", "size": 14, "title": "Bank: DB\nTotal Assets: $1422.0 Billion"}, {"color": "#10b981", "font": {"color": "white"}, "id": "BNPQY", "label": "BNPQY", "shape": "dot", "size": 28, "title": "Bank: BNPQY\nTotal Assets: $2855.0 Billion"}, {"color": "#10b981", "font": {"color": "white"}, "id": "SCGLY", "label": "SCGLY", "shape": "dot", "size": 16, "title": "Bank: SCGLY\nTotal Assets: $1690.0 Billion"}, {"color": "#10b981", "font": {"color": "white"}, "id": "UBS", "label": "UBS", "shape": "dot", "size": 17, "title": "Bank: UBS\nTotal Assets: $1717.0 Billion"}, {"color": "#10b981", "font": {"color": "white"}, "id": "ING", "label": "ING", "shape": "dot", "size": 10, "title": "Bank: ING\nTotal Assets: $1070.0 Billion"}, {"color": "#10b981", "font": {"color": "white"}, "id": "SAN", "label": "SAN", "shape": "dot", "size": 19, "title": "Bank: SAN\nTotal Assets: $1950.0 Billion"}, {"color": "#10b981", "font": {"color": "white"}, "id": "UNCFF", "label": "UNCFF", "shape": "dot", "size": 10, "title": "Bank: UNCFF\nTotal Assets: $930.0 Billion"}, {"color": "#10b981", "font": {"color": "white"}, "id": "NRDEF", "label": "NRDEF", "shape": "dot", "size": 10, "title": "Bank: NRDEF\nTotal Assets: $635.0 Billion"}]);
+                  edges = new vis.DataSet([{"arrows": "to", "color": "#64748b", "from": "JPM", "title": "Exposure: $57.17 Billion", "to": "TOTAL_FINANCIALS", "value": 57.17, "width": 1}, {"arrows": "to", "color": "#64748b", "from": "BAC", "title": "Exposure: $85.66 Billion", "to": "TOTAL_FINANCIALS", "value": 85.66, "width": 1}, {"arrows": "to", "color": "#64748b", "from": "C", "title": "Exposure: $83.51 Billion", "to": "TOTAL_FINANCIALS", "value": 83.51, "width": 1}, {"arrows": "to", "color": "#64748b", "from": "WFC", "title": "Exposure: $158.45 Billion", "to": "TOTAL_FINANCIALS", "value": 158.45, "width": 1}, {"arrows": "to", "color": "#64748b", "from": "GS", "title": "Exposure: $34.28 Billion", "to": "TOTAL_FINANCIALS", "value": 34.28, "width": 1}, {"arrows": "to", "color": "#64748b", "from": "MS", "title": "Exposure: $73.45 Billion", "to": "TOTAL_FINANCIALS", "value": 73.45, "width": 1}, {"arrows": "to", "color": "#64748b", "from": "STT", "title": "Exposure: $33.56 Billion", "to": "TOTAL_FINANCIALS", "value": 33.56, "width": 1}, {"arrows": "to", "color": "#64748b", "from": "BK", "title": "Exposure: $39.7 Billion", "to": "TOTAL_FINANCIALS", "value": 39.7, "width": 1}, {"arrows": "to", "color": "#64748b", "from": "HSBC", "title": "Exposure: $142.5 Billion", "to": "TOTAL_FINANCIALS", "value": 142.5, "width": 1}, {"arrows": "to", "color": "#64748b", "from": "BCS", "title": "Exposure: $95.2 Billion", "to": "TOTAL_FINANCIALS", "value": 95.2, "width": 1}, {"arrows": "to", "color": "#64748b", "from": "DB", "title": "Exposure: $110.4 Billion", "to": "TOTAL_FINANCIALS", "value": 110.4, "width": 1}, {"arrows": "to", "color": "#64748b", "from": "BNPQY", "title": "Exposure: $135.0 Billion", "to": "TOTAL_FINANCIALS", "value": 135.0, "width": 1}, {"arrows": "to", "color": "#64748b", "from": "SCGLY", "title": "Exposure: $88.6 Billion", "to": "TOTAL_FINANCIALS", "value": 88.6, "width": 1}, {"arrows": "to", "color": "#64748b", "from": "UBS", "title": "Exposure: $120.1 Billion", "to": "TOTAL_FINANCIALS", "value": 120.1, "width": 1}, {"arrows": "to", "color": "#64748b", "from": "ING", "title": "Exposure: $45.3 Billion", "to": "TOTAL_FINANCIALS", "value": 45.3, "width": 1}, {"arrows": "to", "color": "#64748b", "from": "SAN", "title": "Exposure: $65.8 Billion", "to": "TOTAL_FINANCIALS", "value": 65.8, "width": 1}, {"arrows": "to", "color": "#64748b", "from": "UNCFF", "title": "Exposure: $41.2 Billion", "to": "TOTAL_FINANCIALS", "value": 41.2, "width": 1}, {"arrows": "to", "color": "#64748b", "from": "NRDEF", "title": "Exposure: $28.5 Billion", "to": "TOTAL_FINANCIALS", "value": 28.5, "width": 1}]);
+
+                  nodeColors = {};
+                  allNodes = nodes.get({ returnType: "Object" });
+                  for (nodeId in allNodes) {
+                    nodeColors[nodeId] = allNodes[nodeId].color;
+                  }
+                  allEdges = edges.get({ returnType: "Object" });
+                  // adding nodes and edges to the graph
+                  data = {nodes: nodes, edges: edges};
+
+                  var options = {
+    "configure": {
+        "enabled": false
+    },
+    "edges": {
+        "color": {
+            "inherit": true
+        },
+        "smooth": {
+            "enabled": true,
+            "type": "dynamic"
+        }
+    },
+    "interaction": {
+        "dragNodes": true,
+        "hideEdgesOnDrag": false,
+        "hideNodesOnDrag": false
+    },
+    "physics": {
+        "enabled": true,
+        "repulsion": {
+            "centralGravity": 0.2,
+            "damping": 0.09,
+            "nodeDistance": 200,
+            "springConstant": 0.05,
+            "springLength": 200
+        },
+        "solver": "repulsion",
+        "stabilization": {
+            "enabled": true,
+            "fit": true,
+            "iterations": 1000,
+            "onlyDynamicEdges": false,
+            "updateInterval": 50
+        }
+    }
+};
+
+                  
+
+
+                  
+
+                  network = new vis.Network(container, data, options);
+
+                  
+
+                  
+
+                  
+
+
+                  
+
+                  return network;
+
+              }
+              drawGraph();
+        </script>
+    </body>
+</html>
