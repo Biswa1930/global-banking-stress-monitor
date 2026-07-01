@@ -3,68 +3,89 @@ import networkx as nx
 from pyvis.network import Network
 import os
 
-print("🕸️ Initializing INTERACTIVE Systemic Network Topology...")
+print("🕸️ Initializing INTERACTIVE Systemic Network Topology (39 G-SIBs)...")
 
-# --- BULLETPROOF PATH HANDLING ---
+# --- PATH HANDLING ---
 script_dir = os.path.dirname(os.path.abspath(__file__))
+processed_dir = os.path.join(script_dir, '..', 'data', 'processed')
 
-# Check if we are in the root folder or the src folder
-if os.path.exists(os.path.join(script_dir, 'data')):
-    data_dir = os.path.join(script_dir, 'data') # Script is in root
-else:
-    data_dir = os.path.join(script_dir, '..', 'data') # Script is in src/
-
-edges_path = os.path.join(data_dir, 'network_edges.csv')
-nodes_path = os.path.join(data_dir, 'network_nodes.csv')
+edges_path = os.path.join(processed_dir, 'network_edges.csv')
+centrality_path = os.path.join(processed_dir, 'network_centrality.csv')
+names_path = os.path.join(processed_dir, 'bank_names.csv')
 
 try:
     df_edges = pd.read_csv(edges_path)
-    df_nodes = pd.read_csv(nodes_path)
-except FileNotFoundError:
-    print(f"❌ Error: Could not find CSV files in {data_dir}.")
+    df_nodes = pd.read_csv(centrality_path)
+    
+    # 1. Load the Mapping Dictionary
+    if os.path.exists(names_path):
+        df_names = pd.read_csv(names_path)
+        df_names['ticker'] = df_names['ticker'].str.upper() # Ensure matching
+        name_map = dict(zip(df_names['ticker'], df_names['full_name']))
+    else:
+        name_map = {}
+        print("⚠️ Warning: bank_names.csv not found. Using tickers only.")
+        
+except FileNotFoundError as e:
+    print(f"❌ Error: Could not find processed data files.\n{e}")
     exit()
+
+# Region classification
+us_banks = ['JPM', 'BAC', 'C', 'WFC', 'GS', 'MS', 'BK', 'STT']
+eu_banks = ['HSBC', 'BCS', 'DB', 'BNPQY', 'SCGLY', 'UBS', 'ING', 'SAN', 'UNCFF', 'NRDEF', 'BPCE', 'CASA', 'STAN']
+asia_banks = ['MUFG', 'SMFG', 'MIZUHO', 'ICBC', 'CCB', 'ABC', 'BOC', 'SBI']
+
+def get_region_color(ticker):
+    if ticker in us_banks: return "#3b82f6"
+    if ticker in eu_banks: return "#10b981"
+    if ticker in asia_banks: return "#8b5cf6"
+    return "#f59e0b"
 
 # 1. Initialize a Directed Graph
 G = nx.DiGraph()
 
-# 2. Add the central aggregate node
-G.add_node("TOTAL_FINANCIALS", size=50, title="The Global Financial System", label="Financial System", color="#ef4444")
+# 2. Add central node
+system_tooltip = "🏦 THE GLOBAL SYSTEM\n========================\nAggregate Counterparty Sink"
+G.add_node("SYSTEM", size=50, title=system_tooltip, label="SYSTEM", color="#ef4444")
 
-# 3. Add the Bank nodes
-for index, row in df_nodes.iterrows():
-    bank = row['bank_id']
-    assets = row['total_assets_bln']
+# 3. Add Bank nodes
+all_banks = df_edges['Lender_Ticker'].unique()
+
+for bank in all_banks:
+    # 2. Inside the loop: Get full name from mapping
+    full_name = name_map.get(bank.upper(), bank)
     
-    # Differentiate colors based on region (US vs Euro)
-    node_color = "#3b82f6" if assets > 1000 and bank in ['JPM', 'BAC', 'C', 'WFC', 'GS', 'MS'] else "#10b981"
+    node_data = df_nodes[df_nodes['Bank_Ticker'] == bank]
+    out_exp = node_data['Out_Exposure_Billion'].values[0] if not node_data.empty else 0.0
+    pr_score = node_data['PageRank_Score'].values[0] if not node_data.empty else 0.0
+
+    scaled_size = max(15, out_exp / 15) 
+    node_color = get_region_color(bank)
     
-    # We scale down the size slightly for PyVis so it fits on screen nicely
-    scaled_size = max(10, assets / 100) 
-    
-    # The 'title' attribute creates the hover tooltip!
-    hover_text = f"Bank: {bank}\nTotal Assets: ${assets} Billion"
+    # Update hover text to use the full_name variable
+    hover_text = (
+        f"🏦 INSTITUTION: {full_name}\n"
+        f"========================\n"
+        f"Systemic Exposure : ${out_exp:,.2f}B\n"
+        f"PageRank Score    : {pr_score:.4f}\n"
+        f"Data Status       : {'Active' if out_exp > 0 else 'Pending Data'}"
+    )
     
     G.add_node(bank, size=scaled_size, title=hover_text, label=bank, color=node_color)
 
-# 4. Add the edges (The Exposure)
+# 4. Add edges
 for index, row in df_edges.iterrows():
-    lender = row['lender']
-    borrower = row['borrower']
-    exposure = row['exposure_bln']
-    
-    hover_edge = f"Exposure: ${exposure} Billion"
-    G.add_edge(lender, borrower, value=exposure, title=hover_edge, color="#64748b")
+    lender = row['Lender_Ticker']
+    borrower = row['Borrower_Ticker']
+    exposure = row['Exposure_Billion_USD']
+    visual_weight = max(0.5, exposure / 50)
+    edge_tooltip = f"Lending Exposure: ${exposure:,.2f}B" if exposure > 0 else "Exposure: Pending Data"
+    G.add_edge(lender, borrower, value=visual_weight, title=edge_tooltip, color="#64748b")
 
-# 5. Generate the Interactive HTML Widget
-# We turn on the physics engine so the nodes bounce and settle naturally
-net = Network(height="800px", width="100%", bgcolor="#0f172a", font_color="white", directed=True)
+# 5. Generate
+net = Network(height="900px", width="100%", bgcolor="#0f172a", font_color="white", directed=True)
 net.from_nx(G)
+net.barnes_hut(gravity=-8000, central_gravity=0.3, spring_length=250, spring_strength=0.04, damping=0.09)
+net.save_graph(os.path.join(processed_dir, "interactive_network.html"))
 
-# Tweak the physics for a cleaner layout
-net.repulsion(node_distance=200, spring_length=200)
-
-output_file = os.path.join(script_dir, "interactive_network.html")
-net.save_graph(output_file)
-
-print(f"✅ Saved interactive web graph to: {output_file}")
-print("🌐 Double-click that HTML file to open it in your web browser!")
+print(f"✅ Successfully compiled 39-Bank topology with full names!")
