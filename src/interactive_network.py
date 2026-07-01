@@ -73,6 +73,22 @@ for bank in all_banks:
     
     G.add_node(bank, size=scaled_size, title=hover_text, label=bank, color=node_color)
 
+# 1. Update the loading block in src/interactive_network.py
+names_path = os.path.join(processed_dir, 'bank_names.csv')
+
+try:
+    df_names = pd.read_csv(names_path)
+    # Ensure tickers are uppercase to avoid matching bugs
+    df_names['ticker'] = df_names['ticker'].str.upper()
+    # Create the mapping dictionary
+    name_map = dict(zip(df_names['ticker'], df_names['full_name']))
+except Exception as e:
+    print(f"⚠️ Warning: Could not load bank_names.csv. Using Ticker fallback. Error: {e}")
+    name_map = {}
+
+# 2. Inside your loop, it stays the same:
+full_name = name_map.get(bank.upper(), bank)
+
 # 4. Add edges
 for index, row in df_edges.iterrows():
     lender = row['Lender_Ticker']

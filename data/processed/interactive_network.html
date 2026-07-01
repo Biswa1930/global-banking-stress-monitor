@@ -1,0 +1,163 @@
+<html>
+    <head>
+        <meta charset="utf-8">
+        
+            <script src="lib/bindings/utils.js"></script>
+            <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/vis-network/9.1.2/dist/dist/vis-network.min.css" integrity="sha512-WgxfT5LWjfszlPHXRmBWHkV2eceiWTOBvrKCNbdgDYTHrT2AeLCGbF4sZlZw3UMN3WtL0tGUoIAKsu8mllg/XA==" crossorigin="anonymous" referrerpolicy="no-referrer" />
+            <script src="https://cdnjs.cloudflare.com/ajax/libs/vis-network/9.1.2/dist/vis-network.min.js" integrity="sha512-LnvoEWDFrqGHlHmDD2101OrLcbsfkrzoSpvtSQtxK3RMnRV0eOkhhBN2dXHKRrUU8p2DGRTk35n4O8nWSVe1mQ==" crossorigin="anonymous" referrerpolicy="no-referrer"></script>
+            
+        
+<center>
+<h1></h1>
+</center>
+
+<!-- <link rel="stylesheet" href="../node_modules/vis/dist/vis.min.css" type="text/css" />
+<script type="text/javascript" src="../node_modules/vis/dist/vis.js"> </script>-->
+        <link
+          href="https://cdn.jsdelivr.net/npm/bootstrap@5.0.0-beta3/dist/css/bootstrap.min.css"
+          rel="stylesheet"
+          integrity="sha384-eOJMYsd53ii+scO/bJGFsiCZc+5NDVN2yr8+0RDqr0Ql0h+rP48ckxlpbzKgwra6"
+          crossorigin="anonymous"
+        />
+        <script
+          src="https://cdn.jsdelivr.net/npm/bootstrap@5.0.0-beta3/dist/js/bootstrap.bundle.min.js"
+          integrity="sha384-JEW9xMcG8R+pH31jmWH6WWP0WintQrMb4s7ZOdauHnUtxwoG2vI5DkLtS3qm9Ekf"
+          crossorigin="anonymous"
+        ></script>
+
+
+        <center>
+          <h1></h1>
+        </center>
+        <style type="text/css">
+
+             #mynetwork {
+                 width: 100%;
+                 height: 900px;
+                 background-color: #0f172a;
+                 border: 1px solid lightgray;
+                 position: relative;
+                 float: left;
+             }
+
+             
+
+             
+
+             
+        </style>
+    </head>
+
+
+    <body>
+        <div class="card" style="width: 100%">
+            
+            
+            <div id="mynetwork" class="card-body"></div>
+        </div>
+
+        
+        
+
+        <script type="text/javascript">
+
+              // initialize global variables.
+              var edges;
+              var nodes;
+              var allNodes;
+              var allEdges;
+              var nodeColors;
+              var originalNodes;
+              var network;
+              var container;
+              var options, data;
+              var filter = {
+                  item : '',
+                  property : '',
+                  value : []
+              };
+
+              
+
+              
+
+              // This method is responsible for drawing the graph, returns the drawn network
+              function drawGraph() {
+                  var container = document.getElementById('mynetwork');
+
+                  
+
+                  // parsing and collecting nodes and edges from the python
+                  nodes = new vis.DataSet([{"color": "#3b82f6", "font": {"color": "white"}, "id": "JPM", "label": "JPM", "shape": "dot", "size": 31, "title": "\ud83c\udfe6 INSTITUTION: JPM\n========================\nSystemic Exposure : $476.59B\nPageRank Score    : 0.0633\nData Status       : Active"}, {"color": "#ef4444", "font": {"color": "white"}, "id": "SYSTEM", "label": "SYSTEM", "shape": "dot", "size": 50, "title": "\ud83c\udfe6 THE GLOBAL SYSTEM\n========================\nAggregate Counterparty Sink"}, {"color": "#3b82f6", "font": {"color": "white"}, "id": "BAC", "label": "BAC", "shape": "dot", "size": 18, "title": "\ud83c\udfe6 INSTITUTION: BAC\n========================\nSystemic Exposure : $280.62B\nPageRank Score    : 0.0633\nData Status       : Active"}, {"color": "#3b82f6", "font": {"color": "white"}, "id": "C", "label": "C", "shape": "dot", "size": 23, "title": "\ud83c\udfe6 INSTITUTION: C\n========================\nSystemic Exposure : $345.70B\nPageRank Score    : 0.0633\nData Status       : Active"}, {"color": "#3b82f6", "font": {"color": "white"}, "id": "WFC", "label": "WFC", "shape": "dot", "size": 15, "title": "\ud83c\udfe6 INSTITUTION: WFC\n========================\nSystemic Exposure : $80.46B\nPageRank Score    : 0.0633\nData Status       : Active"}, {"color": "#3b82f6", "font": {"color": "white"}, "id": "GS", "label": "GS", "shape": "dot", "size": 28, "title": "\ud83c\udfe6 INSTITUTION: GS\n========================\nSystemic Exposure : $421.57B\nPageRank Score    : 0.0633\nData Status       : Active"}, {"color": "#3b82f6", "font": {"color": "white"}, "id": "MS", "label": "MS", "shape": "dot", "size": 15, "title": "\ud83c\udfe6 INSTITUTION: MS\n========================\nSystemic Exposure : $231.83B\nPageRank Score    : 0.0633\nData Status       : Active"}, {"color": "#3b82f6", "font": {"color": "white"}, "id": "BK", "label": "BK", "shape": "dot", "size": 15, "title": "\ud83c\udfe6 INSTITUTION: BK\n========================\nSystemic Exposure : $28.90B\nPageRank Score    : 0.0633\nData Status       : Active"}, {"color": "#3b82f6", "font": {"color": "white"}, "id": "STT", "label": "STT", "shape": "dot", "size": 15, "title": "\ud83c\udfe6 INSTITUTION: STT\n========================\nSystemic Exposure : $6.69B\nPageRank Score    : 0.0633\nData Status       : Active"}, {"color": "#10b981", "font": {"color": "white"}, "id": "HSBC", "label": "HSBC", "shape": "dot", "size": 15, "title": "\ud83c\udfe6 INSTITUTION: HSBC\n========================\nSystemic Exposure : $0.00B\nPageRank Score    : 0.0000\nData Status       : Pending Data"}, {"color": "#10b981", "font": {"color": "white"}, "id": "BCS", "label": "BCS", "shape": "dot", "size": 15, "title": "\ud83c\udfe6 INSTITUTION: BCS\n========================\nSystemic Exposure : $0.00B\nPageRank Score    : 0.0000\nData Status       : Pending Data"}, {"color": "#10b981", "font": {"color": "white"}, "id": "DB", "label": "DB", "shape": "dot", "size": 15, "title": "\ud83c\udfe6 INSTITUTION: DB\n========================\nSystemic Exposure : $0.00B\nPageRank Score    : 0.0000\nData Status       : Pending Data"}, {"color": "#10b981", "font": {"color": "white"}, "id": "BNPQY", "label": "BNPQY", "shape": "dot", "size": 15, "title": "\ud83c\udfe6 INSTITUTION: BNPQY\n========================\nSystemic Exposure : $0.00B\nPageRank Score    : 0.0000\nData Status       : Pending Data"}, {"color": "#10b981", "font": {"color": "white"}, "id": "SCGLY", "label": "SCGLY", "shape": "dot", "size": 15, "title": "\ud83c\udfe6 INSTITUTION: SCGLY\n========================\nSystemic Exposure : $0.00B\nPageRank Score    : 0.0000\nData Status       : Pending Data"}, {"color": "#10b981", "font": {"color": "white"}, "id": "UBS", "label": "UBS", "shape": "dot", "size": 15, "title": "\ud83c\udfe6 INSTITUTION: UBS\n========================\nSystemic Exposure : $0.00B\nPageRank Score    : 0.0000\nData Status       : Pending Data"}, {"color": "#10b981", "font": {"color": "white"}, "id": "ING", "label": "ING", "shape": "dot", "size": 15, "title": "\ud83c\udfe6 INSTITUTION: ING\n========================\nSystemic Exposure : $0.00B\nPageRank Score    : 0.0000\nData Status       : Pending Data"}, {"color": "#10b981", "font": {"color": "white"}, "id": "SAN", "label": "SAN", "shape": "dot", "size": 15, "title": "\ud83c\udfe6 INSTITUTION: SAN\n========================\nSystemic Exposure : $0.00B\nPageRank Score    : 0.0000\nData Status       : Pending Data"}, {"color": "#10b981", "font": {"color": "white"}, "id": "UNCFF", "label": "UNCFF", "shape": "dot", "size": 15, "title": "\ud83c\udfe6 INSTITUTION: UNCFF\n========================\nSystemic Exposure : $0.00B\nPageRank Score    : 0.0000\nData Status       : Pending Data"}, {"color": "#10b981", "font": {"color": "white"}, "id": "NRDEF", "label": "NRDEF", "shape": "dot", "size": 15, "title": "\ud83c\udfe6 INSTITUTION: NRDEF\n========================\nSystemic Exposure : $0.00B\nPageRank Score    : 0.0000\nData Status       : Pending Data"}, {"color": "#10b981", "font": {"color": "white"}, "id": "BPCE", "label": "BPCE", "shape": "dot", "size": 15, "title": "\ud83c\udfe6 INSTITUTION: BPCE\n========================\nSystemic Exposure : $0.00B\nPageRank Score    : 0.0000\nData Status       : Pending Data"}, {"color": "#10b981", "font": {"color": "white"}, "id": "CASA", "label": "CASA", "shape": "dot", "size": 15, "title": "\ud83c\udfe6 INSTITUTION: CASA\n========================\nSystemic Exposure : $0.00B\nPageRank Score    : 0.0000\nData Status       : Pending Data"}, {"color": "#10b981", "font": {"color": "white"}, "id": "STAN", "label": "STAN", "shape": "dot", "size": 15, "title": "\ud83c\udfe6 INSTITUTION: STAN\n========================\nSystemic Exposure : $0.00B\nPageRank Score    : 0.0000\nData Status       : Pending Data"}, {"color": "#f59e0b", "font": {"color": "white"}, "id": "GSI", "label": "GSI", "shape": "dot", "size": 15, "title": "\ud83c\udfe6 INSTITUTION: GSI\n========================\nSystemic Exposure : $0.00B\nPageRank Score    : 0.0000\nData Status       : Pending Data"}, {"color": "#8b5cf6", "font": {"color": "white"}, "id": "MUFG", "label": "MUFG", "shape": "dot", "size": 15, "title": "\ud83c\udfe6 INSTITUTION: MUFG\n========================\nSystemic Exposure : $0.00B\nPageRank Score    : 0.0000\nData Status       : Pending Data"}, {"color": "#8b5cf6", "font": {"color": "white"}, "id": "SMFG", "label": "SMFG", "shape": "dot", "size": 15, "title": "\ud83c\udfe6 INSTITUTION: SMFG\n========================\nSystemic Exposure : $0.00B\nPageRank Score    : 0.0000\nData Status       : Pending Data"}, {"color": "#8b5cf6", "font": {"color": "white"}, "id": "MIZUHO", "label": "MIZUHO", "shape": "dot", "size": 15, "title": "\ud83c\udfe6 INSTITUTION: MIZUHO\n========================\nSystemic Exposure : $0.00B\nPageRank Score    : 0.0000\nData Status       : Pending Data"}, {"color": "#8b5cf6", "font": {"color": "white"}, "id": "ICBC", "label": "ICBC", "shape": "dot", "size": 15, "title": "\ud83c\udfe6 INSTITUTION: ICBC\n========================\nSystemic Exposure : $0.00B\nPageRank Score    : 0.0000\nData Status       : Pending Data"}, {"color": "#8b5cf6", "font": {"color": "white"}, "id": "CCB", "label": "CCB", "shape": "dot", "size": 15, "title": "\ud83c\udfe6 INSTITUTION: CCB\n========================\nSystemic Exposure : $0.00B\nPageRank Score    : 0.0000\nData Status       : Pending Data"}, {"color": "#8b5cf6", "font": {"color": "white"}, "id": "ABC", "label": "ABC", "shape": "dot", "size": 15, "title": "\ud83c\udfe6 INSTITUTION: ABC\n========================\nSystemic Exposure : $0.00B\nPageRank Score    : 0.0000\nData Status       : Pending Data"}, {"color": "#8b5cf6", "font": {"color": "white"}, "id": "BOC", "label": "BOC", "shape": "dot", "size": 15, "title": "\ud83c\udfe6 INSTITUTION: BOC\n========================\nSystemic Exposure : $0.00B\nPageRank Score    : 0.0000\nData Status       : Pending Data"}, {"color": "#f59e0b", "font": {"color": "white"}, "id": "CBA", "label": "CBA", "shape": "dot", "size": 15, "title": "\ud83c\udfe6 INSTITUTION: CBA\n========================\nSystemic Exposure : $0.00B\nPageRank Score    : 0.0000\nData Status       : Pending Data"}, {"color": "#f59e0b", "font": {"color": "white"}, "id": "ANZ", "label": "ANZ", "shape": "dot", "size": 15, "title": "\ud83c\udfe6 INSTITUTION: ANZ\n========================\nSystemic Exposure : $0.00B\nPageRank Score    : 0.0000\nData Status       : Pending Data"}, {"color": "#f59e0b", "font": {"color": "white"}, "id": "NAB", "label": "NAB", "shape": "dot", "size": 15, "title": "\ud83c\udfe6 INSTITUTION: NAB\n========================\nSystemic Exposure : $0.00B\nPageRank Score    : 0.0000\nData Status       : Pending Data"}, {"color": "#f59e0b", "font": {"color": "white"}, "id": "WBC", "label": "WBC", "shape": "dot", "size": 15, "title": "\ud83c\udfe6 INSTITUTION: WBC\n========================\nSystemic Exposure : $0.00B\nPageRank Score    : 0.0000\nData Status       : Pending Data"}, {"color": "#8b5cf6", "font": {"color": "white"}, "id": "SBI", "label": "SBI", "shape": "dot", "size": 15, "title": "\ud83c\udfe6 INSTITUTION: SBI\n========================\nSystemic Exposure : $0.00B\nPageRank Score    : 0.0000\nData Status       : Pending Data"}, {"color": "#f59e0b", "font": {"color": "white"}, "id": "RY", "label": "RY", "shape": "dot", "size": 15, "title": "\ud83c\udfe6 INSTITUTION: RY\n========================\nSystemic Exposure : $0.00B\nPageRank Score    : 0.0000\nData Status       : Pending Data"}, {"color": "#f59e0b", "font": {"color": "white"}, "id": "TD", "label": "TD", "shape": "dot", "size": 15, "title": "\ud83c\udfe6 INSTITUTION: TD\n========================\nSystemic Exposure : $0.00B\nPageRank Score    : 0.0000\nData Status       : Pending Data"}, {"color": "#f59e0b", "font": {"color": "white"}, "id": "BMO", "label": "BMO", "shape": "dot", "size": 15, "title": "\ud83c\udfe6 INSTITUTION: BMO\n========================\nSystemic Exposure : $0.00B\nPageRank Score    : 0.0000\nData Status       : Pending Data"}, {"color": "#f59e0b", "font": {"color": "white"}, "id": "BNS", "label": "BNS", "shape": "dot", "size": 15, "title": "\ud83c\udfe6 INSTITUTION: BNS\n========================\nSystemic Exposure : $0.00B\nPageRank Score    : 0.0000\nData Status       : Pending Data"}, {"color": "#f59e0b", "font": {"color": "white"}, "id": "CM", "label": "CM", "shape": "dot", "size": 15, "title": "\ud83c\udfe6 INSTITUTION: CM\n========================\nSystemic Exposure : $0.00B\nPageRank Score    : 0.0000\nData Status       : Pending Data"}]);
+                  edges = new vis.DataSet([{"arrows": "to", "color": "#64748b", "from": "JPM", "title": "Lending Exposure: $476.59B", "to": "SYSTEM", "value": 9.531799999999999, "width": 1}, {"arrows": "to", "color": "#64748b", "from": "BAC", "title": "Lending Exposure: $280.62B", "to": "SYSTEM", "value": 5.6124, "width": 1}, {"arrows": "to", "color": "#64748b", "from": "C", "title": "Lending Exposure: $345.70B", "to": "SYSTEM", "value": 6.914, "width": 1}, {"arrows": "to", "color": "#64748b", "from": "WFC", "title": "Lending Exposure: $80.46B", "to": "SYSTEM", "value": 1.6092, "width": 1}, {"arrows": "to", "color": "#64748b", "from": "GS", "title": "Lending Exposure: $421.57B", "to": "SYSTEM", "value": 8.4314, "width": 1}, {"arrows": "to", "color": "#64748b", "from": "MS", "title": "Lending Exposure: $231.83B", "to": "SYSTEM", "value": 4.6366000000000005, "width": 1}, {"arrows": "to", "color": "#64748b", "from": "BK", "title": "Lending Exposure: $28.90B", "to": "SYSTEM", "value": 0.578, "width": 1}, {"arrows": "to", "color": "#64748b", "from": "STT", "title": "Lending Exposure: $6.69B", "to": "SYSTEM", "value": 0.5, "width": 1}, {"arrows": "to", "color": "#64748b", "from": "HSBC", "title": "Exposure: Pending Data", "to": "SYSTEM", "value": 0.5, "width": 1}, {"arrows": "to", "color": "#64748b", "from": "BCS", "title": "Exposure: Pending Data", "to": "SYSTEM", "value": 0.5, "width": 1}, {"arrows": "to", "color": "#64748b", "from": "DB", "title": "Exposure: Pending Data", "to": "SYSTEM", "value": 0.5, "width": 1}, {"arrows": "to", "color": "#64748b", "from": "BNPQY", "title": "Exposure: Pending Data", "to": "SYSTEM", "value": 0.5, "width": 1}, {"arrows": "to", "color": "#64748b", "from": "SCGLY", "title": "Exposure: Pending Data", "to": "SYSTEM", "value": 0.5, "width": 1}, {"arrows": "to", "color": "#64748b", "from": "UBS", "title": "Exposure: Pending Data", "to": "SYSTEM", "value": 0.5, "width": 1}, {"arrows": "to", "color": "#64748b", "from": "ING", "title": "Exposure: Pending Data", "to": "SYSTEM", "value": 0.5, "width": 1}, {"arrows": "to", "color": "#64748b", "from": "SAN", "title": "Exposure: Pending Data", "to": "SYSTEM", "value": 0.5, "width": 1}, {"arrows": "to", "color": "#64748b", "from": "UNCFF", "title": "Exposure: Pending Data", "to": "SYSTEM", "value": 0.5, "width": 1}, {"arrows": "to", "color": "#64748b", "from": "NRDEF", "title": "Exposure: Pending Data", "to": "SYSTEM", "value": 0.5, "width": 1}, {"arrows": "to", "color": "#64748b", "from": "BPCE", "title": "Exposure: Pending Data", "to": "SYSTEM", "value": 0.5, "width": 1}, {"arrows": "to", "color": "#64748b", "from": "CASA", "title": "Exposure: Pending Data", "to": "SYSTEM", "value": 0.5, "width": 1}, {"arrows": "to", "color": "#64748b", "from": "STAN", "title": "Exposure: Pending Data", "to": "SYSTEM", "value": 0.5, "width": 1}, {"arrows": "to", "color": "#64748b", "from": "GSI", "title": "Exposure: Pending Data", "to": "SYSTEM", "value": 0.5, "width": 1}, {"arrows": "to", "color": "#64748b", "from": "MUFG", "title": "Exposure: Pending Data", "to": "SYSTEM", "value": 0.5, "width": 1}, {"arrows": "to", "color": "#64748b", "from": "SMFG", "title": "Exposure: Pending Data", "to": "SYSTEM", "value": 0.5, "width": 1}, {"arrows": "to", "color": "#64748b", "from": "MIZUHO", "title": "Exposure: Pending Data", "to": "SYSTEM", "value": 0.5, "width": 1}, {"arrows": "to", "color": "#64748b", "from": "ICBC", "title": "Exposure: Pending Data", "to": "SYSTEM", "value": 0.5, "width": 1}, {"arrows": "to", "color": "#64748b", "from": "CCB", "title": "Exposure: Pending Data", "to": "SYSTEM", "value": 0.5, "width": 1}, {"arrows": "to", "color": "#64748b", "from": "ABC", "title": "Exposure: Pending Data", "to": "SYSTEM", "value": 0.5, "width": 1}, {"arrows": "to", "color": "#64748b", "from": "BOC", "title": "Exposure: Pending Data", "to": "SYSTEM", "value": 0.5, "width": 1}, {"arrows": "to", "color": "#64748b", "from": "CBA", "title": "Exposure: Pending Data", "to": "SYSTEM", "value": 0.5, "width": 1}, {"arrows": "to", "color": "#64748b", "from": "ANZ", "title": "Exposure: Pending Data", "to": "SYSTEM", "value": 0.5, "width": 1}, {"arrows": "to", "color": "#64748b", "from": "NAB", "title": "Exposure: Pending Data", "to": "SYSTEM", "value": 0.5, "width": 1}, {"arrows": "to", "color": "#64748b", "from": "WBC", "title": "Exposure: Pending Data", "to": "SYSTEM", "value": 0.5, "width": 1}, {"arrows": "to", "color": "#64748b", "from": "SBI", "title": "Exposure: Pending Data", "to": "SYSTEM", "value": 0.5, "width": 1}, {"arrows": "to", "color": "#64748b", "from": "RY", "title": "Exposure: Pending Data", "to": "SYSTEM", "value": 0.5, "width": 1}, {"arrows": "to", "color": "#64748b", "from": "TD", "title": "Exposure: Pending Data", "to": "SYSTEM", "value": 0.5, "width": 1}, {"arrows": "to", "color": "#64748b", "from": "BMO", "title": "Exposure: Pending Data", "to": "SYSTEM", "value": 0.5, "width": 1}, {"arrows": "to", "color": "#64748b", "from": "BNS", "title": "Exposure: Pending Data", "to": "SYSTEM", "value": 0.5, "width": 1}, {"arrows": "to", "color": "#64748b", "from": "CM", "title": "Exposure: Pending Data", "to": "SYSTEM", "value": 0.5, "width": 1}]);
+
+                  nodeColors = {};
+                  allNodes = nodes.get({ returnType: "Object" });
+                  for (nodeId in allNodes) {
+                    nodeColors[nodeId] = allNodes[nodeId].color;
+                  }
+                  allEdges = edges.get({ returnType: "Object" });
+                  // adding nodes and edges to the graph
+                  data = {nodes: nodes, edges: edges};
+
+                  var options = {
+    "configure": {
+        "enabled": false
+    },
+    "edges": {
+        "color": {
+            "inherit": true
+        },
+        "smooth": {
+            "enabled": true,
+            "type": "dynamic"
+        }
+    },
+    "interaction": {
+        "dragNodes": true,
+        "hideEdgesOnDrag": false,
+        "hideNodesOnDrag": false
+    },
+    "physics": {
+        "barnesHut": {
+            "avoidOverlap": 0,
+            "centralGravity": 0.3,
+            "damping": 0.09,
+            "gravitationalConstant": -8000,
+            "springConstant": 0.04,
+            "springLength": 250
+        },
+        "enabled": true,
+        "stabilization": {
+            "enabled": true,
+            "fit": true,
+            "iterations": 1000,
+            "onlyDynamicEdges": false,
+            "updateInterval": 50
+        }
+    }
+};
+
+                  
+
+
+                  
+
+                  network = new vis.Network(container, data, options);
+
+                  
+
+                  
+
+                  
+
+
+                  
+
+                  return network;
+
+              }
+              drawGraph();
+        </script>
+    </body>
+</html>
