@@ -1,79 +1,97 @@
-"""
-Market Microstructure Risk Metrics - Global Banking Stress Monitor
-------------------------------------------------------------------
-Computes marginal systemic risk contributions (ΔCoVaR) and 
-structural capital shortfalls (SRISK) during severe market shocks.
-"""
-
 import pandas as pd
 import numpy as np
+import statsmodels.api as sm
 import statsmodels.formula.api as smf
+import os
+import warnings
+warnings.filterwarnings('ignore') # Suppress statsmodels convergence warnings for extreme tails
 
-def compute_srisk(equity_val: float, debt_val: float, lrmes: float, k: float = 0.08) -> float:
-    """
-    Computes the SRISK (Capital Shortfall) of a bank in billions.
-    SRISK = E[Capital Shortfall | Systemic Crisis]
-    
-    Args:
-        equity_val (float): Current market capitalization.
-        debt_val (float): Book value of total liabilities.
-        lrmes (float): Long-Run Marginal Expected Shortfall (expected equity drop).
-        k (float): Prudential capital ratio requirement (default 8%).
-        
-    Returns:
-        float: Expected capital shortfall in currency units. Returns 0 if well-capitalized.
-    """
-    # Formula: SRISK = k * Debt - (1 - k) * Equity * (1 - LRMES)
-    # Note: LRMES is input as a positive decimal (e.g., 0.40 for a 40% drop)
-    
-    expected_equity_post_shock = equity_val * (1 - lrmes)
-    required_capital = k * (debt_val + expected_equity_post_shock)
-    
-    srisk = required_capital - expected_equity_post_shock
-    
-    # If SRISK is negative, the bank has a capital surplus, so shortfall is 0
-    return max(srisk, 0.0)
+print("📉 Initializing Phase 2B: Systemic Risk Engine (ΔCoVaR)...")
 
-def compute_delta_covar(df_returns: pd.DataFrame, target_bank: str, system_index: str = '^GSPC', q: float = 0.05) -> float:
-    """
-    Calculates ΔCoVaR via Quantile Regression (Adrian & Brunnermeier).
-    ΔCoVaR measures the change in system-wide VaR when the target bank shifts
-    from its median state to its distressed state (e.g., 5th percentile).
-    
-    Args:
-        df_returns (pd.DataFrame): Matrix of log returns for banks and the market.
-        target_bank (str): Column name of the bank being stressed.
-        system_index (str): Column name representing the market/system.
-        q (float): The distress quantile (default 5% / 0.05).
-        
-    Returns:
-        float: The ΔCoVaR value.
-    """
-    temp_df = df_returns[[system_index, target_bank]].dropna()
-    temp_df.columns = ['system', 'bank']
-    
+# 1. Define Paths
+script_dir = os.path.dirname(os.path.abspath(__file__))
+processed_dir = os.path.join(script_dir, '..', 'data', 'processed')
+market_data_file = os.path.join(processed_dir, 'daily_market_factors.csv')
+output_file = os.path.join(processed_dir, 'covar_results.csv')
+
+if not os.path.exists(market_data_file):
+    raise FileNotFoundError(f"❌ Missing {market_data_file}. Please ensure Phase 1B output is correctly named.")
+
+# 2. Load Market Data
+df = pd.read_csv(market_data_file, parse_dates=['Date'])
+df = df.sort_values('Date').set_index('Date')
+
+# 3. Identify Bank Tickers vs Macro Indicators
+# Assuming macro indicators have standard names like VIX, HY, TED, etc. 
+# We treat all other columns as bank tickers.
+macro_cols = [col for col in df.columns if any(m in col.upper() for m in ['VIX', 'HY', 'TED', 'YIELD', 'SOFR', 'DTB3'])]
+bank_cols = [col for col in df.columns if col not in macro_cols]
+
+print(f"📊 Found {len(bank_cols)} banks and {len(macro_cols)} macro state variables.")
+
+# 4. Compute the "System Return" (Equally weighted banking index)
+df['System_Return'] = df[bank_cols].mean(axis=1)
+
+# 5. Lag the Macro State Variables (Critical to avoid Look-Ahead Bias)
+for macro in macro_cols:
+    df[f'{macro}_lag1'] = df[macro].shift(1)
+
+# Drop the first row which now has NaNs due to the lag
+df = df.dropna()
+
+print("🧮 Running Adrian & Brunnermeier (2016) Quantile Regressions...")
+
+results = []
+q_distress = 0.05 # 5th percentile (Distress)
+q_median = 0.50   # 50th percentile (Normal state)
+
+# Build the regression formula for the state variables dynamically
+state_var_formula = " + ".join([f"{m}_lag1" for m in macro_cols])
+
+for bank in bank_cols:
     try:
-        # Fit 5th percentile regression (Distressed State)
-        mod_distress = smf.quantreg('system ~ bank', temp_df)
-        res_distress = mod_distress.fit(q=q)
+        # Formula: System Return ~ Bank Return + Lagged Macro Variables
+        formula = f"System_Return ~ {bank} + {state_var_formula}" if state_var_formula else f"System_Return ~ {bank}"
         
-        # Fit 50th percentile regression (Median/Normal State)
-        mod_median = smf.quantreg('system ~ bank', temp_df)
-        res_median = mod_median.fit(q=0.50)
+        # 1. Estimate Systemic Risk in Distress (5th Percentile)
+        model_distress = smf.quantreg(formula, df).fit(q=q_distress, max_iter=2000)
+        beta_distress = model_distress.params[bank]
         
-        # Calculate bank's specific VaR limits
-        var_distress = temp_df['bank'].quantile(q)
-        var_median = temp_df['bank'].median()
+        # 2. Estimate Systemic Risk in Normal State (Median)
+        model_median = smf.quantreg(formula, df).fit(q=q_median, max_iter=2000)
+        beta_median = model_median.params[bank]
         
-        # CoVaR = Alpha + Beta * Bank_VaR
-        covar_distress = res_distress.params['Intercept'] + res_distress.params['bank'] * var_distress
-        covar_median = res_median.params['Intercept'] + res_median.params['bank'] * var_median
+        # 3. Calculate Bank's historical Value at Risk (VaR)
+        var_distress = df[bank].quantile(q_distress)
+        var_median = df[bank].quantile(q_median)
         
-        # ΔCoVaR is the difference between the system's risk when bank is distressed vs normal
-        delta_covar = covar_distress - covar_median
+        # 4. Calculate ΔCoVaR
+        # How much does the system's VaR widen when this specific bank moves from median to distress?
+        delta_covar = beta_distress * (var_distress - var_median)
         
-        return delta_covar
-        
+        results.append({
+            'Bank_Ticker': bank,
+            'VaR_5pct': round(var_distress, 4),
+            'Beta_Distress': round(beta_distress, 4),
+            'Delta_CoVaR': round(delta_covar, 6)
+        })
     except Exception as e:
-        print(f"⚠️ Quantile regression failed for {target_bank}: {e}")
-        return np.nan
+        print(f"⚠️ Could not compute ΔCoVaR for {bank}: {e}")
+
+# 6. Compile and Save
+df_covar = pd.DataFrame(results)
+
+if not df_covar.empty:
+    # Sort by the most systemically dangerous banks (most negative ΔCoVaR)
+    df_covar = df_covar.sort_values(by='Delta_CoVaR', ascending=True)
+    df_covar.to_csv(output_file, index=False)
+    
+    print("\n" + "="*80)
+    print(f"✅ SUCCESSFULLY CALCULATED ΔCoVaR FOR {len(df_covar)} BANKS")
+    print("="*80)
+    print(f"Data saved to: {output_file}")
+    
+    print("\n🚨 Top 5 Most Systemically Dangerous Banks by ΔCoVaR (More negative = Worse):")
+    print(df_covar.head(5).to_string(index=False))
+else:
+    print("❌ No ΔCoVaR metrics calculated.")

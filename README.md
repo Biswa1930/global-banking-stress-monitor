@@ -1,30 +1,23 @@
-# global-banking-stress-monitor
-Real-time systemic risk early warning system using network topology, market microstructure, and physics-informed deep learning on 50 G-SIBs.
+# 🏦 Global Banking Stress Monitor
 
+An institutional-grade systemic risk pipeline designed to quantify counterparty risk, systemic fragility, and capital vulnerabilities across Global Systemically Important Banks (G-SIBs).
 
-## 📊 Data Architecture & Methodology
+## 🧠 Quantitative Methodologies Implemented
+This engine moves beyond standard volatility modeling by aggregating four distinct dimensions of systemic risk:
+1. **Network Topology (Interconnectedness):** Utilizes `NetworkX` to build a directed graph of interbank exposures sourced directly from FFIEC FR Y-9C regulatory filings, isolating bottleneck risks via PageRank and Betweenness Centrality.
+2. **Conditional $\Delta$CoVaR (Spillover Risk):** Implements Adrian & Brunnermeier's (2016) quantile regression ($q=0.05$) to measure the marginal increase in systemic Value-at-Risk when a specific institution enters distress, strictly conditioned on lagged macroeconomic state variables (VIX, TED Spread, Yield Curve) to eliminate omitted variable bias.
+3. **Systemic Absorption Ratio (Fragility):** A rolling 252-day Principal Component Analysis (PCA) that flags peak structural fragility when the 1st Principal Component explains >70% of cross-sectional variance.
+4. **SRISK (Capital Vulnerability):** Replicates Brownlees & Engle's (2017) Long-Run Marginal Expected Shortfall ($LRMES$) to project expected capital depletion and required taxpayer bailouts during a simulated 40% systemic market collapse.
 
-This systemic risk engine operates on a hybrid data pipeline, combining automated high-frequency market data with a proprietary, manually engineered interbank network dataset. 
+## ⚙️ Architecture & Execution
+- **Data Ingestion:** Automated pull from the Federal Reserve API (FRED) and Yahoo Finance.
+- **Regulatory Parser:** Custom engine to bypass legacy EOF errors and safely extract strictly-defined MDRM codes (e.g., `BHCA7206`, `P793`) from raw bulk CSVs.
+- **Visualization:** Interactive `Streamlit` and `Plotly` dashboard.
 
-### 1. Data Retrieval & Engineering
-Standard financial APIs do not capture the granular counterparty risk required for true systemic network topology. To build the foundational `network_edges.csv` matrix, data was sourced via a dual approach:
-* **Manual Regulatory Extraction (The Network Proxy):** Wholesale credit exposure to financial institutions was manually extracted from the "Credit Risk Concentrations" and "Corporate Credit Portfolio" footnotes of the 2023 SEC 10-K Annual Reports for the major G-SIBs. 
-* **Regulatory Balance Sheets:** Tier 1 capital ratios, total assets, and non-performing loans were pulled directly from FR Y-9C filings via the Chicago Fed public database.
-* **Automated Market Feeds:** Daily equity microstructure data, macroeconomic stress indicators (VIX, TED spread, yield curve slopes), and CDS spreads were aggregated programmatically via `yfinance`, FRED, and OpenBB.
+### Quick Start
+```powershell
+# Install dependencies
+pip install -r requirements.txt
 
-### 2. Mathematical Framework & Risk Metrics
-The engine fuses traditional econometric risk models with advanced network topology and deep learning. The core calculations driving the dashboard include:
-
-* **$\Delta\text{CoVaR}$ (Adrian & Brunnermeier):** Measures a specific bank's marginal contribution to overall systemic risk using quantile regression.
-    $\Delta\text{CoVaR}_i = \text{CoVaR}(\text{system} | \text{bank}_i \text{ in distress}) - \text{CoVaR}(\text{system} | \text{bank}_i \text{ at median})$
-
-* **SRISK (Brownlees & Engle):** Calculates the expected capital shortfall of a financial entity during a severe market decline. 
-    $\text{SRISK}_i = E_i \times (k - (1-k) \times \text{LRMES}_i)$
-    *(Where $E_i$ is equity, $k$ is the prudential capital ratio (8%), and $\text{LRMES}_i$ is the Long-Run Marginal Expected Shortfall).*
-
-* **Network Centrality (Topology Layer):**
-    Utilizes NetworkX to compute Eigenvector and Betweenness centrality on the directed weighted graph of interbank exposures, identifying critical hub nodes and transmission vectors prior to distress events.
-
-* **Physics-Informed Deep Learning (PIDL):**
-    Adapts Fokker-Planck dynamics and Ruppeiner curvature via a PyTorch Autoencoder to detect thermodynamic phase transitions in the global banking network. Spikes in the approximated scalar curvature act as an early warning signal for systemic instability:
-    $R \sim -1 / \sqrt{\det(g)}$
+# Execute the master pipeline
+.\run_pipeline.ps1

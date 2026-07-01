@@ -3,98 +3,64 @@ import numpy as np
 from sklearn.decomposition import PCA
 import matplotlib.pyplot as plt
 import os
+import warnings
+warnings.filterwarnings('ignore')
 
-print("🌀 Initializing Systemic Absorption Ratio (PCA) Engine...")
+print("🌀 Initializing Phase 2B: Systemic Absorption Ratio (PCA) Engine...")
 
-# --- BULLETPROOF PATH HANDLING ---
+# 1. Define Paths
 script_dir = os.path.dirname(os.path.abspath(__file__))
-if os.path.exists(os.path.join(script_dir, 'data')):
-    data_dir = os.path.join(script_dir, 'data') 
-else:
-    data_dir = os.path.join(script_dir, '..', 'data') 
+processed_dir = os.path.join(script_dir, '..', 'data', 'processed')
+market_data_file = os.path.join(processed_dir, 'daily_market_factors.csv')
+output_csv = os.path.join(processed_dir, 'absorption_ratio.csv')
 
-# Load the market factors we just updated
-market_path = os.path.join(data_dir, 'daily_market_factors.csv')
-try:
-    df_market = pd.read_csv(market_path, index_col=0, parse_dates=True)
-except FileNotFoundError:
-    print("❌ Error: Could not find daily_market_factors.csv. Run fetch_market_data.py first!")
-    exit()
+# 2. Load the Data
+df = pd.read_csv(market_data_file, parse_dates=['Date'])
+df = df.set_index('Date')
 
-# Extract only the bank return columns
-bank_cols = [col for col in df_market.columns if '_Return' in col]
-df_returns = df_market[bank_cols].dropna()
+# 3. Isolate the 8 US G-SIBs (Drop the macro variables for the PCA)
+bank_cols = [col for col in df.columns if col not in ['VIX', 'HY_CREDIT', 'YIELD_CURVE', 'TED_SPREAD']]
+df_banks = df[bank_cols]
 
-print(f"📊 Analyzing cross-sectional variance for {len(bank_cols)} Global G-SIBs...")
+print(f"📊 Analyzing cross-sectional variance for {len(bank_cols)} US G-SIBs...")
+print("🧮 Running rolling Principal Component Analysis (PCA)...")
 
-# We use a 1-year rolling window (approx 252 trading days)
-window_size = 252 
+# 4. Rolling PCA Setup
+window_size = 252 # 1 Trading Year
 absorption_ratios = []
 dates = []
 
-print("🧮 Running rolling Principal Component Analysis (PCA)...")
-for i in range(window_size, len(df_returns)):
-    window_data = df_returns.iloc[i-window_size:i]
+# Iterate through the time series with a rolling window
+for i in range(window_size, len(df_banks)):
+    # Extract the 1-year window of log returns
+    window_data = df_banks.iloc[i - window_size : i]
     
-    # 1st Principal Component = The "Systemic" Factor
-    pca = PCA(n_components=1)
-    pca.fit(window_data)
+    # Standardize the data (PCA requires mean=0, variance=1)
+    standardized_data = (window_data - window_data.mean()) / window_data.std()
     
-    # Absorption Ratio: Fraction of variance explained by PC1
+    # Fit PCA
+    pca = PCA(n_components=1) # We only care about the 1st Principal Component (Systemic Risk)
+    pca.fit(standardized_data)
+    
+    # Extract the variance explained by the 1st PC
     ar = pca.explained_variance_ratio_[0]
     
     absorption_ratios.append(ar)
-    dates.append(df_returns.index[i])
+    dates.append(df_banks.index[i])
 
-# Create time-series series
-ar_series = pd.Series(absorption_ratios, index=dates)
+# 5. Compile Results
+df_ar = pd.DataFrame({'Date': dates, 'Absorption_Ratio': absorption_ratios})
 
-# --- PLOTTING ---
-# 1. Force the data to be numeric, converting errors to NaN
-ar_series = pd.to_numeric(ar_series, errors='coerce')
-
-# 2. Drop the NaNs so Matplotlib doesn't crash
-ar_clean = ar_series.dropna()
-
-plt.figure(figsize=(12, 6))
-# 3. Use the cleaned data for plotting
-plt.plot(ar_clean.index, ar_clean.values, color='#dc2626', linewidth=2, label='Absorption Ratio (1st PC)')
-plt.axhline(y=0.70, color='black', linestyle='--', label='Contagion Threshold (70%)')
-
-# 4. Fill between, only using the valid data
-plt.fill_between(
-    ar_clean.index, 
-    ar_clean.values, 
-    0.70, 
-    where=(ar_clean.values > 0.70), 
-    color='red', 
-    alpha=0.3
-)
-
-plt.title("Systemic Absorption Ratio: Global Banking Contagion Index", fontsize=16, fontweight='bold')
-plt.ylabel("Fraction of Variance Explained", fontsize=12)
-plt.legend()
-plt.grid(True, alpha=0.3)
-plt.tight_layout()
-
-# Save the chart
-output_path = os.path.join(script_dir, '..', "absorption_ratio_chart.png")
-plt.savefig(output_path, dpi=300)
-print(f"✅ Saved Absorption Ratio time-series chart to: {output_path}")
-
-# Save the chart
-output_path = os.path.join(script_dir, '..', "absorption_ratio_chart.png")
-plt.savefig(output_path, dpi=300)
-print(f"✅ Saved Absorption Ratio time-series chart to: {output_path}")
-
-# --- CURRENT STATE OUTPUT ---
-current_ar = ar_series.iloc[-1]
-print("\n" + "="*70)
-print(f" 🚨 CURRENT MARKET STATE (As of {ar_series.index[-1].strftime('%Y-%m-%d')}) 🚨")
-print("="*70)
-print(f"Current Absorption Ratio: {current_ar*100:.2f}%")
-if current_ar > 0.70:
-    print("⚠️ WARNING: The system is highly coupled. Contagion risk is SEVERE.")
+if not df_ar.empty:
+    df_ar.to_csv(output_csv, index=False)
+    print("\n" + "="*80)
+    print(f"✅ SUCCESSFULLY CALCULATED ABSORPTION RATIO ({len(df_ar)} Rolling Windows)")
+    print("="*80)
+    print(f"Data saved to: {output_csv}")
+    
+    # Check the highest fragility days
+    highest_stress = df_ar.sort_values(by='Absorption_Ratio', ascending=False).head(5)
+    print("\n🚨 Top 5 Days of Maximum Systemic Fragility (High Correlation):")
+    print(highest_stress.to_string(index=False))
 else:
-    print("✅ CLEAR: Global banks are trading relatively independently.")
-print("="*70)
+    print("❌ Failed to calculate Absorption Ratio. Check data length.")

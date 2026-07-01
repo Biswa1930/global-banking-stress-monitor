@@ -233,17 +233,21 @@ __marimo__/
 # Ignore heavy Fed bulk text files
 data/raw/fed_fry9c/bulk_data/
 
+openbb-env/
+
+# Security
+.env
 
 # Environments
-openbb-env/
-venv/
 .venv/
+env/
 __pycache__/
 *.pyc
 
-# Data (if they are large/proprietary)
-# Keep this if you want to track your CSVs
+# IDEs
+.vscode/
+.idea/
 
-# System files
-.DS_Store
-Thumbs.db
+# Streamlit/Jupyter
+.streamlit/
+.ipynb_checkpoints/

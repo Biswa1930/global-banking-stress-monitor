@@ -1,0 +1,9 @@
+Bank_Ticker,Out_Exposure_Billion,In_Exposure_Billion,PageRank_Score,Betweenness_Centrality
+JPM,476.59,0,0.0633,0.0
+GS,421.57,0,0.0633,0.0
+C,345.7,0,0.0633,0.0
+BAC,280.62,0,0.0633,0.0
+MS,231.83,0,0.0633,0.0
+WFC,80.46,0,0.0633,0.0
+BK,28.9,0,0.0633,0.0
+STT,6.69,0,0.0633,0.0
