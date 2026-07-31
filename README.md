@@ -125,12 +125,12 @@ http://localhost:8501
 ```
 
 ---
-
+<!-- 
 ## 🛣️ Next Steps
 
 - Add a fallback market-cap data source for tickers (e.g. BK) not resolved by the primary quote provider, to bring SRISK coverage to all 8 US G-SIBs.
 - Extend the physics-informed deep learning (PINN) layer for forward-looking stress propagation, building on the point-kinetics systemic risk research this project draws from.
-- Migrate remaining `use_container_width` Streamlit calls to the `width` parameter ahead of its deprecation.
+- Migrate remaining `use_container_width` Streamlit calls to the `width` parameter ahead of its deprecation. -->
 
 ---
 
