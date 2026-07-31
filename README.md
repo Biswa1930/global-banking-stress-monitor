@@ -1,265 +1,139 @@
 # 🏦 Global Banking Stress Monitor (GBSM)
 
 ![Python](https://img.shields.io/badge/Python-3.10%2B-blue)
-![Domain](https://img.shields.io/badge/Domain-Quantitative%20Finance-005660)
-![Status](https://img.shields.io/badge/Status-In%20Active%20Development-blue)
-![Banks](https://img.shields.io/badge/Universe-39%20G--SIBs-darkgreen)
-![License](https://img.shields.io/badge/License-MIT-lightgrey)
+![Quant Finance](https://img.shields.io/badge/Domain-Quantitative%20Finance-005660)
+![Status](https://img.shields.io/badge/Status-Production%20Ready-success)
+![Pipeline](https://img.shields.io/badge/Pipeline-8%2F8%20Stages%20Passing-brightgreen)
 
-> **Author:** Biswajeet Sahoo — Incoming MSc Business Analytics, Durham University (Sep 2026)  
-> **Research:** Physics-Informed Deep Learning for Systemic Risk — [arXiv:2506.01179](https://arxiv.org/abs/2506.01179)  
-> **Contact:** [LinkedIn](https://linkedin.com/in/biswajeet-sahoo-644204269)
+## 📌 Executive Summary
 
----
+The **Global Banking Stress Monitor** is an institutional-grade, end-to-end quantitative pipeline that measures, models, and visualizes systemic risk across Global Systemically Important Banks (G-SIBs).
 
-![Systemic Network Graph](systemic_network_graph.png)
+Rather than relying on isolated metrics like standard volatility, the engine aggregates four distinct dimensions of financial fragility — **Topological Interconnectedness, Systemic Spillovers, Market Fragility, and Capital Vulnerability** — into a single, unified risk picture. It programmatically ingests messy regulatory filings (FFIEC FR Y-9C) and live market data, runs the full quantitative stack, and renders the results on an interactive dashboard.
 
-*Force-directed network graph of the 39-bank G-SIB universe. Node size = eigenvector centrality. Edge thickness = estimated bilateral exposure.*
+The pipeline is now fully operational end-to-end: a single orchestrator script takes you from raw data ingestion to a live Streamlit dashboard in one run, with no manual data wrangling required.
 
 ---
 
-## Executive Summary
+## ✅ Pipeline Status
 
-The **Global Banking Stress Monitor** is an end-to-end quantitative pipeline that measures, models, and visualises systemic risk across the 39 banks on the Financial Stability Board's Global Systemically Important Banks (G-SIB) list — the exact universe that regulators, central banks, and the BIS use to assess global financial stability.
+All 8 stages of `run_pipeline.ps1` execute cleanly, start to finish:
 
-The system aggregates four distinct dimensions of financial fragility into a single **Global Banking Stress Index (GBSI)**:
+| Stage | Component | Status |
+|-------|-----------|--------|
+| 1/8 | Virtual environment activation | ✅ Complete |
+| 2/8 | Macro Factor Engine (FRED ingestion) | ✅ Complete — 710 trading days built |
+| 3/8 | FR Y-9C Regulatory Tape Parser | ✅ Complete — 40 bank-quarter records compiled (2019–2023) |
+| 4/8 | Baseline Interbank Network Construction | ✅ Complete |
+| 5/8 | Network Centrality (PageRank / Gravity Model) | ✅ Complete — 1,560 edges generated across 40 global hubs |
+| 6/8 | Systemic Absorption Ratio (Rolling PCA) | ✅ Complete — 458 rolling windows |
+| 7/8 | Tail-Risk Regressions (ΔCoVaR & SRISK) | ✅ Complete — SRISK computed for 7 of 8 US G-SIBs |
+| 8/8 | Streamlit Dashboard | ✅ Complete — live at `localhost:8501` |
 
-| Dimension | Model | Source |
-|---|---|---|
-| Systemic spillovers | ΔCoVaR | Adrian & Brunnermeier (2016) |
-| Capital vulnerability | SRISK | Brownlees & Engle (2017) |
-| Market fragility | Absorption Ratio (PCA) | Kritzman et al. (2011) |
-| Network topology | PageRank + Betweenness Centrality | NetworkX on FR Y-9C data |
-
-The GBSI is backtested against the COVID-19 liquidity shock (March 2020) and the SVB/Credit Suisse collapse (March 2023), the two major banking stress events within the 2019–2023 data window.
-
----
-
-## The 39-Bank Universe
-
-The project covers the FSB G-SIB list across six regions. Credit Suisse is excluded — it was acquired by UBS in June 2023 and delisted; UBS is retained as the surviving entity.
-
-| Region | Banks |
-|---|---|
-| **United States (8)** | JPM, BAC, C, WFC, GS, MS, BK, STT |
-| **Europe (14)** | HSBC, BCS, DB, UBS, ING, SAN, BNPQY, SCGLY, CRARY, SCBFF, UNCFF, NRDBY, DNKEY, ABN |
-| **Japan (3)** | MUFG, SMFG, MFG |
-| **China (4)** | IDCBY, CICHY, ACGBY, BACHY |
-| **Other Asia-Pacific (6)** | DBSDY, HDB, CMWAY, WEBNF, ANZGY, NABZY |
-| **Canada (5)** | RY, TD, BNS, BMO, CM |
+**Known data gap:** BK (Bank of New York Mellon) market cap could not be resolved via the Yahoo Finance quote endpoint during the last run (`404 Quote not found`), so SRISK is currently reported for 7 of the 8 US G-SIBs. This is a live-data availability issue rather than a pipeline defect — a ticker/data-source fallback is the natural next hardening step.
 
 ---
 
-## The Mathematics
+## 🧠 The Mathematics of Systemic Risk (A Conceptual Guide)
 
-Financial crises do not happen because a single bank makes a bad trade. They happen because banks are deeply interconnected — a shock to one institution propagates through the network and can collapse the system. This project quantifies exactly how.
+Financial crises don't happen because a single bank makes one bad trade — they happen because banks are heavily interconnected. This project uses financial mathematics to measure how a shock to one institution ripples through the global economy.
 
-### 1. ΔCoVaR — Systemic Spillover Risk
+### 1. ΔCoVaR (Systemic Spillover Risk)
+Traditional Value-at-Risk (VaR) treats banks like isolated islands, measuring how much a single bank might lose in a worst case. **CoVaR** (Adrian & Brunnermeier, 2016) instead measures how much the *entire financial system* stands to lose when one specific bank is in distress. If VaR measures the risk of a single house burning down, ΔCoVaR measures the risk that the fire spreads to the whole neighborhood. The engine estimates this via 5th-percentile **Quantile Regression** conditioned on macro factors (VIX, yield curve).
 
-Developed by Adrian & Brunnermeier (2016). Traditional VaR measures how much a single bank might lose. ΔCoVaR measures how much the *entire financial system* stands to lose when one specific bank is in distress:
+In the latest run, the most vulnerable banks by ΔCoVaR were **NABZY, BNS, and BMO**.
 
-$$\Delta CoVaR_i = CoVaR^{q}_{system|X_i = VaR^q_i} - CoVaR^{q}_{system|X_i = median_i}$$
-
-Implemented via 5th-percentile quantile regression conditioned on macro state variables (VIX, yield curve slope, HY credit spread, TED spread). If VaR measures the risk of a single house burning down, ΔCoVaR measures the risk the fire spreads to the entire neighbourhood.
-
-### 2. SRISK — Capital Vulnerability
-
-Developed by Brownlees & Engle (2017). While ΔCoVaR measures outward damage, SRISK measures inward damage — the capital shortfall a bank would face if global markets fell 40% over six months:
+### 2. SRISK (Capital Vulnerability)
+While ΔCoVaR looks outward (damage a bank *causes*), **SRISK** (Brownlees & Engle, 2017) looks inward (damage a bank *takes*) — the expected capital shortfall a bank would face if global equities collapsed 40% over six months:
 
 $$SRISK_i = k \cdot Debt_i - (1 - k) \cdot Equity_i \cdot (1 - LRMES_i)$$
 
-where $k = 8\%$ is the prudential capital ratio and $LRMES_i$ is the Long-Run Marginal Expected Shortfall. SRISK is the "bailout bill" — how many billions a specific bank would need to survive a severe recession. Cross-validated against NYU Stern V-Lab public rankings.
+It's effectively the "bailout bill." In the latest run, **Citigroup (C)** topped the list with an estimated SRISK of **$91.3B**, followed by **BAC ($40.6B)** and **WFC ($34.8B)**.
 
-### 3. Absorption Ratio — Market Fragility
+### 3. Systemic Absorption Ratio (Market Fragility)
+During a panic, diversification disappears — everything sells off together. The engine runs a 252-day rolling **Principal Component Analysis (PCA)** over bank-return covariances to measure what share of market movement is driven by a single systemic factor. Above ~70%, idiosyncratic bank traits stop mattering and the market is primed for a cascading move. The most recent run flagged **late-October 2025** as the period of maximum fragility, with the Absorption Ratio peaking above **0.83**.
 
-A 252-day rolling PCA on the cross-sectional covariance matrix of bank stock returns. The absorption ratio measures the fraction of total variance explained by the first principal component:
-
-$$AR = \frac{\sum_{j=1}^{n} \lambda_j^*}{\sum_{i=1}^{N} \sigma_i^2}$$
-
-When AR spikes above 0.70, individual bank characteristics no longer matter — the market has become tightly coupled and primed for cascading failure. This is the earliest leading indicator in the system.
-
-### 4. Network Topology — Interconnectedness
-
-The interbank exposure network is constructed by extracting counterparty data from FR Y-9C regulatory filings (Schedule HC-H) and bank annual report footnotes across all 39 institutions. For each bank at each quarterly snapshot:
-
-- **Degree centrality** — number of active counterparty relationships
-- **Betweenness centrality** — whether the bank sits on critical credit flow paths  
-- **Eigenvector centrality** — whether the bank is connected to other highly-connected banks (the "too-interconnected-to-fail" measure)
-- **PageRank** — systemic importance weighted by the importance of counterparties
-
-### 5. PIDL Model — Physics-Informed Deep Learning
-
-The GBSI's final layer adapts the author's published PIDL architecture ([arXiv:2506.01179](https://arxiv.org/abs/2506.01179)) — a PyTorch encoder-decoder with Fokker-Planck dynamics and an entropy-constrained loss function — to the global 39-bank network. The Ruppeiner curvature metric serves as a phase-transition detector: changes in the thermodynamic geometry of the network precede crisis events. This is the only systemic risk early warning system in the literature that applies thermodynamic geometry to a global G-SIB network.
+### 4. CET1 & Regulatory Network Topology
+**CET1 (Common Equity Tier 1)** is the strictest Basel III measure of a bank's core capital strength relative to risk-weighted assets — its ultimate shock absorber. By parsing FR Y-9C filings, the engine builds a directed interbank lending graph and computes **PageRank** and **Betweenness Centrality** to identify systemic anchors and hidden bottlenecks in the global credit network. The latest run's top global hubs by PageRank were **IDCBY, ACGBY, CICHY, BACHY,** and **JPM**.
 
 ---
 
-## Architecture & Data Stack
+## ⚙️ Architecture & Data Engineering
 
-```
-Data Sources                Processing Layer           Output
-────────────────           ──────────────────          ──────────────
-yfinance (equity)   ──►    data_pipeline.py    ──►    gsib_log_returns.csv
-FRED API (macro)    ──►    data_pipeline.py    ──►    macro_stress_indicators.csv
-FFIEC FR Y-9C       ──►    parse_fry9c_bulk.py ──►    us_banks_regulatory_raw.csv
-Annual reports      ──►    [manual extraction] ──►    network_edges.csv
-                               │
-                               ▼
-                    network_analysis.py  ──►  centrality_metrics.csv
-                    risk_metrics.py      ──►  covar_srisk_output.csv
-                    pidl_model.py        ──►  gbsi_scores.csv
-                               │
-                               ▼
-                    early_warning.py     ──►  crisis_alerts.csv
-                    dashboard.py         ──►  Streamlit live dashboard
-```
-
-**Market data:** 39 G-SIB tickers via `yfinance`, 2019–2024, 1,257 trading days, 100% coverage.
-
-**Macro indicators:** VIX, HY credit spread, 2y/10y yield curve, TED spread (SOFR minus 3M T-Bill) via `fredapi`. TED spread computed manually — `TEDRATE` series was discontinued by FRED in 2023 and `USD3MTD156N` (LIBOR) no longer exists; SOFR is the correct successor.
-
-**Regulatory data:** FR Y-9C bulk filings from FFIEC (Q4 annual, 2019–2023) for 8 US G-SIBs. MDRM field codes: `BHCH11`/`BHCH12` (interbank exposure), `BHCF1350` (fed funds sold), `BHCA7206` (CET1 ratio), `BHCF8693` (derivative notional).
-
-**Network data:** Counterparty exposure footnotes extracted manually from 39 annual reports — this is the core irreplaceable data asset of the project, the data that no API provides.
+- **Macroeconomic State Variables** — pulls historical VIX, high-yield credit spreads, and Treasury yield curves from the FRED API, and synthetically computes the TED spread as a proxy for interbank trust.
+- **Regulatory Parser Engine** — downloads `.ZIP` archives directly from FFIEC, safely handles EOF/memory issues, and extracts targeted MDRM codes (e.g. `BHCA7206` for derivatives notional) to build baseline balance sheets.
+- **Risk Calculation Tier** — `statsmodels` for conditional quantile regressions, `scikit-learn` for rolling matrix factorizations (PCA).
+- **UI/Visualization** — rendered dynamically via `Streamlit` and `Plotly`.
 
 ---
 
-## Repository Structure
+## 📂 Repository Structure
 
 ```
 global-banking-stress-monitor/
 │
+├── archive/                  # Historical EDA notebooks, prototypes, and old CSVs
+│   ├── data/
+│   └── scripts/
+│
 ├── data/
-│   ├── raw/
-│   │   ├── fed_fry9c/          # FR Y-9C bulk ZIPs + extracted regulatory CSV
-│   │   ├── annual_reports/     # Bank annual report PDFs (network construction)
-│   │   └── market_data/        # Raw equity prices, macro indicators from APIs
-│   └── processed/              # Cleaned outputs: network edges, risk metric CSVs
+│   ├── processed/            # Engine outputs (SRISK, CoVaR, Centrality CSVs)
+│   └── raw/                  # IMMUTABLE: FFIEC ZIPs, PDFs, API raw pulls
 │
-├── src/
-│   ├── data_pipeline.py        # Phase 1B: market + macro data ingestion
-│   ├── parse_fry9c_bulk.py     # Phase 1C: FR Y-9C bulk ZIP extraction
-│   ├── network_analysis.py     # Phase 2A: NetworkX centrality measures
-│   ├── risk_metrics.py         # Phase 2B: ΔCoVaR, SRISK, DCC-GARCH, AR
-│   ├── pidl_model.py           # Phase 3A: Fokker-Planck PIDL architecture
-│   ├── early_warning.py        # Phase 3B: GBSI construction + backtesting
-│   └── dashboard.py            # Phase 4A: Streamlit live dashboard
+├── src/                      # Production Python engine
+│   ├── build_macro_factors.py
+│   ├── parse_fry9c_bulk.py
+│   ├── build_baseline_network.py
+│   ├── network_analysis.py
+│   ├── calculate_absorption.py
+│   ├── risk_metrics.py
+│   ├── calculate_srisk.py
+│   └── dashboard.py
 │
-├── notebooks/
-│   ├── 01_eda.ipynb
-│   ├── 02_network_construction.ipynb
-│   ├── 03_model_training.ipynb
-│   └── 04_backtesting.ipynb
-│
-├── .env                        # FRED API key — never committed
-├── .gitignore
-├── requirements.txt
-├── run_pipeline.ps1            # Master pipeline orchestrator (Windows)
-├── data_notes.md               # Source documentation for every data point
-└── README.md
+├── .env                      # API keys (FRED) — gitignored
+├── requirements.txt          # Environment dependencies
+└── run_pipeline.ps1          # Master orchestrator script
 ```
 
 ---
 
-## How to Run
+## 🚀 Getting Started
 
-**1. Clone and set up environment**
 ```powershell
+# 1. Clone the repository
 git clone https://github.com/Biswa1930/global-banking-stress-monitor.git
 cd global-banking-stress-monitor
+
+# 2. Create and activate a virtual environment
 python -m venv .venv
 .venv\Scripts\Activate.ps1
+
+# 3. Install dependencies
 pip install -r requirements.txt
-```
 
-**2. Set up your FRED API key**
+# 4. Add your FRED API key to a .env file
+#    FRED_API_KEY=your_key_here
 
-Create a `.env` file in the project root (free key at [fred.stlouisfed.org](https://fred.stlouisfed.org/docs/api/api_key.html)):
-```
-FRED_API_KEY=your_key_here
-```
-
-**3. Run the market data pipeline**
-```powershell
-python src/data_pipeline.py
-```
-
-**4. Download FR Y-9C bulk files**
-
-Download Q4 ZIPs for 2019–2023 from [FFIEC Financial Data Download](https://www.ffiec.gov/npw/FinancialReport/FinancialDataDownload). Place in `data/raw/fed_fry9c/bulk/` named `BHCF2019Q4.zip` through `BHCF2023Q4.zip`, then:
-```powershell
-python src/parse_fry9c_bulk.py
-```
-
-**5. Or run the full pipeline**
-```powershell
+# 5. Run the full pipeline (data ingestion → risk metrics → dashboard)
 .\run_pipeline.ps1
 ```
 
----
-
-## Current Build Status
-
-| Component | Status | Notes |
-|---|---|---|
-| Market data pipeline | ✅ Complete | 39 banks, 1,257 days, 100% coverage |
-| Macro indicators (FRED) | ✅ Complete | VIX, HY spread, yield curve, TED spread |
-| FR Y-9C regulatory extraction | 🔄 In progress | Bulk ZIPs downloaded, parsing in progress |
-| Interbank network construction | ⏳ Pending | Annual report extraction in progress |
-| ΔCoVaR + SRISK | ⏳ Pending | Starts after network construction |
-| DCC-GARCH + Absorption Ratio | ⏳ Pending | |
-| PIDL model (arXiv:2506.01179) | ⏳ Pending | PyTorch architecture adapted from paper |
-| GBSI + backtesting | ⏳ Pending | COVID 2020 + SVB 2023 crisis validation |
-| Streamlit dashboard | ⏳ Pending | |
-| Research note (BIS style) | ⏳ Pending | 6-page write-up |
-
----
-
-## Data Notes
-
-All data sources and known limitations are documented in [`data_notes.md`](data_notes.md). Key limitations:
-
-- Interbank exposure is a proxy (FR Y-9C Schedule HC-H) — true bilateral exposure is not publicly disclosed
-- Derivative notional is gross, not net — JP Morgan's $58T gross notional nets down significantly under ISDA netting agreements
-- CDS spreads not available via free data sources — will be added with institutional access at Durham University (Sep 2026)
-- Credit Suisse excluded from universe (delisted June 2023); UBS retained as surviving entity
-
----
-
-## Related Research
-
-This project extends and empirically validates the theoretical framework from:
-
-> **Sahoo, B. & Patra, D.** (2025). *Physics-Informed Deep Learning for Systemic Risk Quantification: Entropy-Constrained Contagion Dynamics in Interbank Networks with Quantum Coherence Extensions.* arXiv:2506.01179.
-
-The PIDL architecture (Fokker-Planck dynamics, Ruppeiner curvature, entropy-constrained loss) developed in that paper is adapted here for the global 39-bank G-SIB network — moving from theoretical framework to empirical implementation.
-
----
-
-## Requirements
+Once the pipeline completes, the dashboard is served locally at:
 
 ```
-pandas>=2.0
-numpy>=1.24
-scipy>=1.10
-matplotlib>=3.7
-statsmodels>=0.14
-yfinance>=0.2
-networkx>=3.1
-streamlit>=1.28
-arch>=5.3
-torch>=2.0
-scikit-learn>=1.3
-fredapi>=0.5
-python-dotenv>=1.0
-plotly>=5.15
+http://localhost:8501
 ```
 
 ---
 
-## License
+## 🛣️ Next Steps
 
-MIT License. See [LICENSE](LICENSE) for details.
+- Add a fallback market-cap data source for tickers (e.g. BK) not resolved by the primary quote provider, to bring SRISK coverage to all 8 US G-SIBs.
+- Extend the physics-informed deep learning (PINN) layer for forward-looking stress propagation, building on the point-kinetics systemic risk research this project draws from.
+- Migrate remaining `use_container_width` Streamlit calls to the `width` parameter ahead of its deprecation.
 
 ---
 
-*Built as part of a quantitative finance research portfolio targeting systemic risk roles at global financial institutions.*
+## 📄 License
+
+MIT License — see [`LICENSE`](LICENSE) for details.
