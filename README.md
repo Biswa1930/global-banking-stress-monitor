@@ -77,22 +77,27 @@ global-banking-stress-monitor/
 │   └── scripts/
 │
 ├── data/
-│   ├── processed/            # Engine outputs (SRISK, CoVaR, Centrality CSVs)
+│   ├── processed/            # Engine outputs (SRISK, CoVaR, tensors, trained PIDL model)
 │   └── raw/                  # IMMUTABLE: FFIEC ZIPs, PDFs, API raw pulls
 │
+├── reports/
+│   └── figures/              # Generated visualizations (e.g., systemic_risk_dashboard.png)
+│
 ├── src/                      # Production Python engine
-│   ├── build_macro_factors.py
-│   ├── parse_fry9c_bulk.py
-│   ├── build_baseline_network.py
-│   ├── network_analysis.py
-│   ├── calculate_absorption.py
-│   ├── risk_metrics.py
-│   ├── calculate_srisk.py
-│   └── dashboard.py
+│   ├── data_ingestion.py         # FR Y-9C parsing
+│   ├── market_data_pipeline.py   # FRED macro variables & yfinance pulls
+│   ├── dynamic_network.py        # Centrality and baseline network construction
+│   ├── data_pipeline.py          # Risk metrics (CoVaR, SRISK, Absorption Ratio)
+│   ├── pidl_model.py             # Core Physics-Informed Deep Learning VAE architecture
+│   ├── train_pidl.py             # Walk-forward training loop for the PIDL network
+│   ├── visualization.py          # Static dashboard generation and Ruppeiner math
+│   └── dashboard.py              # Interactive Streamlit web application
 │
 ├── .env                      # API keys (FRED) — gitignored
+├── .gitignore                # Prevents massive datasets and keys from uploading
+├── README.md                 # Complete project documentation and findings
 ├── requirements.txt          # Environment dependencies
-└── run_pipeline.ps1          # Master orchestrator script
+└── run_pipeline.ps1          # Master orchestrator script combining all phases
 ```
 
 ---
