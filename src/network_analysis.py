@@ -1,80 +1,110 @@
 import pandas as pd
+import numpy as np
 import networkx as nx
 import os
 
-print("🌐 Initializing Phase 2A: Network Centrality Engine...")
+print("🕸️ Initializing Phase 2A: Systemic Network Topology (Gravity Model)...")
 
-# 1. Define Paths
+# ==========================================
+# 1. PATHS & PIPELINE HANDOFF
+# ==========================================
 script_dir = os.path.dirname(os.path.abspath(__file__))
 processed_dir = os.path.join(script_dir, '..', 'data', 'processed')
-edges_file = os.path.join(processed_dir, 'network_edges.csv')
-output_file = os.path.join(processed_dir, 'network_centrality.csv')
 
-# 2. Load the Edge List
-if not os.path.exists(edges_file):
-    raise FileNotFoundError(f"❌ Missing {edges_file}. Please run the Phase 1D builder first.")
+# Enforce Single Source of Truth: Load the output from data_ingestion.py
+clean_data_path = os.path.join(processed_dir, 'cleaned_bank_nodes.csv')
+if not os.path.exists(clean_data_path):
+    raise FileNotFoundError(f"Pipeline Error: Run data_ingestion.py first. Missing: {clean_data_path}")
 
-df_edges = pd.read_csv(edges_file)
+df_nodes = pd.read_csv(clean_data_path)
+df_nodes.set_index('Bank_Ticker', inplace=True)
+tickers = df_nodes.index.tolist()
 
-# Filter out zero exposures to keep the graph sparse and accurate
-df_edges = df_edges[df_edges['Exposure_Billion_USD'] > 0]
+# ==========================================
+# 2. THE GRAVITY MODEL (EDGE CONSTRUCTION)
+# ==========================================
+print(f"🪐 Distributing Interbank Exposure across {len(tickers)} Global Hubs...")
 
-print(f"📊 Loaded {len(df_edges)} active interbank lending edges.")
+edges = []
+total_system_assets = df_nodes['Total_Assets_Billion'].sum()
 
-# 3. Build the Directed Graph
-# DiGraph because lending is directional (Lender -> Borrower)
-G = nx.from_pandas_edgelist(
-    df_edges, 
-    source='Lender_Ticker', 
-    target='Borrower_Ticker', 
-    edge_attr='Exposure_Billion_USD', 
-    create_using=nx.DiGraph()
-)
-
-print("🧮 Calculating systemic topology metrics (NetworkX)...")
-
-# 4. Calculate Centrality Measures
-# We use weight='Exposure_Billion_USD' where applicable so a $400B edge matters more than a $1B edge.
-
-# A. Degree Centrality (Connectivity)
-in_degree = dict(G.in_degree(weight='Exposure_Billion_USD'))
-out_degree = dict(G.out_degree(weight='Exposure_Billion_USD'))
-
-# B. PageRank (Systemic Importance - Who is connected to other highly connected banks?)
-pagerank = nx.pagerank(G, weight='Exposure_Billion_USD')
-
-# C. Betweenness Centrality (Bottleneck Risk - Who sits on the shortest paths?)
-# Note: For a star graph, SYSTEM will have 1.0, banks will have 0.0. 
-# This will dynamically change when bilateral data is added.
-betweenness = nx.betweenness_centrality(G, weight='Exposure_Billion_USD')
-
-# 5. Compile the Results
-results = []
-for node in G.nodes():
-    if node == 'SYSTEM': # We only care about the banks, not the placeholder node
+for lender in tickers:
+    # Use .get() to handle potential missing columns gracefully, defaulting to 0 if NaN
+    total_exposure = df_nodes.loc[lender, 'Interbank_Exposure_Billion']
+    if pd.isna(total_exposure) or total_exposure == 0:
         continue
+    
+    for borrower in tickers:
+        if lender == borrower:
+            continue
+            
+        # Borrower's gravitational pull = (Borrower Assets / All Other Assets)
+        borrower_assets = df_nodes.loc[borrower, 'Total_Assets_Billion']
+        assets_excluding_lender = total_system_assets - df_nodes.loc[lender, 'Total_Assets_Billion']
         
-    results.append({
-        'Bank_Ticker': node,
-        'Out_Exposure_Billion': round(out_degree.get(node, 0), 2),
-        'In_Exposure_Billion': round(in_degree.get(node, 0), 2),
-        'PageRank_Score': round(pagerank.get(node, 0), 4),
-        'Betweenness_Centrality': round(betweenness.get(node, 0), 4)
+        gravity_weight = borrower_assets / assets_excluding_lender
+        bilateral_exposure = total_exposure * gravity_weight
+        
+        edges.append({
+            'Lender_Ticker': lender,
+            'Borrower_Ticker': borrower,
+            'Exposure_Billion_USD': round(bilateral_exposure, 3)
+        })
+
+df_edges = pd.DataFrame(edges)
+
+# ==========================================
+# 3. NETWORK MATH & CENTRALITY
+# ==========================================
+print("🧮 Calculating PageRank & Eigenvector Centralities...")
+
+# Build a directed weighted Graph
+G = nx.DiGraph()
+
+for _, row in df_edges.iterrows():
+    if row['Exposure_Billion_USD'] > 0:
+        G.add_edge(row['Lender_Ticker'], row['Borrower_Ticker'], weight=row['Exposure_Billion_USD'])
+
+# Calculate Network Centrality Metrics
+try:
+    pagerank = nx.pagerank(G, weight='weight')
+    
+    # Ensure convergence on dense matrices
+    eigenvector = nx.eigenvector_centrality_numpy(G, weight='weight')
+    betweenness = nx.betweenness_centrality(G, weight='weight')
+except Exception as e:
+    print(f"⚠️ Network math warning: {e}")
+    pagerank, eigenvector, betweenness = {}, {}, {}
+
+# Compile Node Centrality DataFrame
+centrality_data = []
+for bank in tickers:
+    out_exposure = df_edges[df_edges['Lender_Ticker'] == bank]['Exposure_Billion_USD'].sum() if not df_edges.empty else 0
+    in_exposure = df_edges[df_edges['Borrower_Ticker'] == bank]['Exposure_Billion_USD'].sum() if not df_edges.empty else 0
+    
+    centrality_data.append({
+        'Bank_Ticker': bank,
+        'Out_Exposure_Billion': round(out_exposure, 2),
+        'In_Exposure_Billion': round(in_exposure, 2),
+        'PageRank_Score': round(pagerank.get(bank, 0.0), 4),
+        'Eigenvector_Score': round(eigenvector.get(bank, 0.0), 4),
+        'Betweenness_Score': round(betweenness.get(bank, 0.0), 4)
     })
 
-df_centrality = pd.DataFrame(results)
+df_centrality = pd.DataFrame(centrality_data).sort_values(by='PageRank_Score', ascending=False)
 
-# Sort by systemic footprint (Out_Exposure)
-if not df_centrality.empty:
-    df_centrality = df_centrality.sort_values(by='Out_Exposure_Billion', ascending=False)
-    df_centrality.to_csv(output_file, index=False)
-    
-    print("\n" + "="*80)
-    print(f"✅ SUCCESSFULLY CALCULATED NETWORK CENTRALITY ({len(df_centrality)} Active Banks)")
-    print("="*80)
-    print(f"Data saved to: {output_file}")
-    
-    print("\n🔍 Top 5 Most Systemically Connected Banks (Current Topology):")
-    print(df_centrality.head(5).to_string(index=False))
-else:
-    print("❌ No valid bank nodes found in the network.")
+# ==========================================
+# 4. EXPORT TO PROCESSED DIRECTORY
+# ==========================================
+output_edges = os.path.join(processed_dir, 'network_edges.csv')
+output_nodes = os.path.join(processed_dir, 'network_centrality.csv')
+
+df_edges.to_csv(output_edges, index=False)
+df_centrality.to_csv(output_nodes, index=False)
+
+print("\n" + "="*80)
+print(f"✅ SUCCESSFULLY MAPPED SYSTEMIC NETWORK")
+print("="*80)
+print(f"Edges Generated: {len(df_edges)}")
+print("\nTop 5 Global Hubs (by PageRank):")
+print(df_centrality.head(5)[['Bank_Ticker', 'Out_Exposure_Billion', 'PageRank_Score']].to_string(index=False))
