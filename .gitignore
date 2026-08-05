@@ -251,3 +251,39 @@ __pycache__/
 # Streamlit/Jupyter
 .streamlit/
 .ipynb_checkpoints/
+
+
+
+# Environments
+.venv/
+.env
+__pycache__/
+.ruff_cache/
+
+# Data (Keep the folder structure, ignore the heavy files)
+data/raw/*
+data/processed/*.csv
+data/processed/*.pt
+!data/raw/.gitkeep
+!data/processed/.gitkeep
+
+# Exclude large trained weights if over 100MB
+# data/processed/pidl_trained_model.pt
+# Environments & Keys
+.venv/
+.env
+__pycache__/
+.ruff_cache/
+.pytest_cache/
+
+# Data (Ignore all raw data and heavy CSVs/Tensors)
+data/raw/*
+!data/raw/.gitkeep
+data/processed/*.csv
+data/processed/dynamic_edges_tensor.pt
+
+# EXCEPTION: Keep the trained model so others can run the dashboard
+!data/processed/pidl_trained_model.pt
+
+# Ignore Jupyter notebook checkpoints
+.ipynb_checkpoints/
